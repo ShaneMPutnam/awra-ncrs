@@ -17,21 +17,18 @@ APP_GMAIL_PASSWORD = os.getenv("APP_GMAIL_PASSWORD")
 
 
 ## Global Variables:
-ROOT_DIRECTORY = r"C:\Users\sputnam\Documents\AWRA\11_7_22_Seminar"
+ROOT_DIRECTORY = r"C:\Users\sputnam\Desktop\1_19_23"
 PDH_DIRECTORY = os.path.join(ROOT_DIRECTORY, "PDH")
-PDH_FILENAME = "AWRA_PDH_11_7_22_Seminar_{}.pptx"
+PDH_FILENAME = "awra_pdh_1_19_23_seminar_{}.pptx"
 
-PDH_EMAIL_CC = ["kearam55@gmail.com", "powersdb@cdmsmith.com", "msreetharan@dewberry.com"]
+PDH_EMAIL_CC = ["natcapawra@gmail.com", "kearam55@gmail.com", "powersdb@cdmsmith.com"]
 PDH_EMAIL_SUBJECT = "AWRA-NCRS Certificate of Attendance"
 PDH_EMAIL_BODY = """Dear {},\n
-Thank you for attending the AWRA-NCRS event titled “Coastal Development in the Nation’s Capital and Beyond.” Please see attached for your certificate of attendance.\n
-As a reminder, we will be hosting another evening seminar in January 2023, so please keep an eye out for additional details.\n
-In the next few weeks, we will be issuing a call for abstracts for our Annual Water Symposium. The symposium’s theme is Equitable and Resilient Water Management and will take place in April 2023.\n
-To stay up-to-date with all of the latest news please visit our website: http://www.awrancrs.org/.\n
+Thank you for attending the AWRA-NCRS event titled “Grassroots Efforts to Protect Surface Waters in DC.” Please see attached for your certificate of attendance.\n
+As a reminder, we will be hosting our annual water symposium Friday, April 14, 2023, at The University of the District of Columbia. The symposium’s theme is Equitable and Resilient Water Management.\n
+To stay up-to-date with all of the latest news, please visit our website: http://www.awrancrs.org/.\n
 Sincerely,
-Shane\n
-Shane M. Putnam, Ph.D.
-AWRA-NCRS Treasurer
+AWRA-NCRS
 """
 
 
@@ -97,7 +94,7 @@ def send_email(
 
 
 ## Read in the attendance list:
-attendees_filename = "november_attendees.xlsx"
+attendees_filename = "january_attendees.xlsx"
 attendees_path = os.path.join(ROOT_DIRECTORY, attendees_filename)
 
 attendees = pd.read_excel(attendees_path)
@@ -116,7 +113,7 @@ for col in ["first", "last", "email"]:
 
 
 ## Read in the certificate template:
-pdh_template_filename = "awra_pdh_2022_2023_template.pptx"
+pdh_template_filename = "awra_pdh_1_19_23_template.pptx"
 pdh_template_path = os.path.join(ROOT_DIRECTORY, pdh_template_filename)
 
 pdh_template = Presentation(pdh_template_path)
@@ -133,25 +130,25 @@ for i, attendee in enumerate(attendees.itertuples()):
     first_name = attendee.first
     last_name = attendee.last
     participant_email = attendee.email
+    if str(participant_email) != "nan":
+        # Make certificate and convert to PDF:
+        attendee_pdh_pptx_path = os.path.join(PDH_DIRECTORY, PDH_FILENAME.format(last_name))
+        updated_text = f"{first_name} {last_name}"
+        update_save_powerpoint(textbox, updated_text, pdh_template, attendee_pdh_pptx_path)
 
-    # Make certificate and convert to PDF:
-    attendee_pdh_pptx_path = os.path.join(PDH_DIRECTORY, PDH_FILENAME.format(last_name))
-    updated_text = f"{first_name} {last_name}"
-    update_save_powerpoint(textbox, updated_text, pdh_template, attendee_pdh_pptx_path)
+        attendee_pdh_pdf_path = attendee_pdh_pptx_path.replace(".pptx", ".pdf")
+        replace_powerpoint_w_pdf(attendee_pdh_pptx_path, attendee_pdh_pdf_path)
 
-    attendee_pdh_pdf_path = attendee_pdh_pptx_path.replace(".pptx", ".pdf")
-    replace_powerpoint_w_pdf(attendee_pdh_pptx_path, attendee_pdh_pdf_path)
+        if i + 1 == attendees.shape[0]:
+            powerpoint = win32com.client.Dispatch("Powerpoint.Application")
+            powerpoint.Quit()
 
-    if i + 1 == attendees.shape[0]:
-        powerpoint = win32com.client.Dispatch("Powerpoint.Application")
-        powerpoint.Quit()
+        # Email certificate
+        cc_list = [email for email in PDH_EMAIL_CC if email != participant_email]
+        cc_email_address = ",".join(cc_list)
+        recipients_email_addresses = cc_list + [participant_email]
+        email_body = PDH_EMAIL_BODY.format(first_name)
 
-    # Email certificate
-    cc_list = [email for email in PDH_EMAIL_CC if email != participant_email]
-    cc_email_address = ",".join(cc_list)
-    recipients_email_addresses = cc_list + [participant_email]
-    email_body = PDH_EMAIL_BODY.format(first_name)
-
-    message = create_email(APP_GMAIL_ADDRESS, cc_email_address, participant_email, PDH_EMAIL_SUBJECT, email_body)
-    message = add_attachment(message, attendee_pdh_pdf_path)
-    send_email(message, APP_GMAIL_ADDRESS, APP_GMAIL_PASSWORD, recipients_email_addresses)
+        message = create_email(APP_GMAIL_ADDRESS, cc_email_address, participant_email, PDH_EMAIL_SUBJECT, email_body)
+        message = add_attachment(message, attendee_pdh_pdf_path)
+        send_email(message, APP_GMAIL_ADDRESS, APP_GMAIL_PASSWORD, recipients_email_addresses)
